@@ -4,13 +4,13 @@ from flask import Flask, request, jsonify
 from pprint import pprint
 import base64
 import copy
-import json
 import jsonpatch
 import os
-import re
 
 app = Flask(__name__)
 
+FROM_PREFIX = "IMAGE_FROM_"
+TO_PREFIX   = "IMAGE_TO_"
 
 @app.route('/', methods=['POST'])
 def webhook():
@@ -89,33 +89,39 @@ def webhook():
 
 def swap_image(container_spec):
 
-    image_prefix = os.environ['IMAGE_PREFIX']
     name = container_spec["name"]
     image = container_spec["image"]
+    new_image = image
+    swap = swap_images()
 
     print("[INFO] - Swapping image definition for container spec: {}".format(name))
 
-    if image_prefix in image:
+    for fromStr, toStr in swap:
+        new_image = image.replace(fromStr, toStr, 1)
+        if new_image != image:
+            break
 
-        print ("[INFO] - Internal image definition detected, nothing to do")
-
-        admission_response = {
-            "allowed": "True"
-        }
-
+    if new_image != image:
+        print ("[INFO] - image does not match requested swap images, nothing to do")
 
     else:
 
-        if '/' not in image:
-            new_image = image_prefix + re.sub(r'(^.*)',r'/\1',image)
-        else:
-            new_image = image_prefix + re.sub(r'(^.*/)+(.*)',r'/\2',image)
-
-        print ("[INFO] - External image definition detected: {}".format(image))
-        print ("[INFO] - External Image updated to Internal image: {}".format(new_image))
+        print ("[INFO] - Substitution image definition detected: {}".format(image))
+        print ("[INFO] - Image updated to : {}".format(new_image))
 
         container_spec["image"] = new_image
+        container_spec["imagePullPolicy"] = "Always"
 
+def swap_images():
+    imgs = []
+    for k, v in os.environ:
+        if k.startswith(FROM_PREFIX):
+            toKey = TO_PREFIX + k[len(FROM_PREFIX):]
+            if toKey in os.environ:
+                imgs.append((v, os.environ[toKey]))
+    return imgs
+
+def swap_image(img, swap):
 
 app.run(host='0.0.0.0', port=5000, debug=True, ssl_context=('./ssl/cert.pem', './ssl/key.pem'))
 

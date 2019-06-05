@@ -22,10 +22,14 @@ spec:
         command: [/app/imageswap-webhook.py]
         imagePullPolicy: Always
         env:
-        - name: IMAGE_PREFIX
-          value: jmsearcy
-        - name: FLASK_ENV
-          value: development
+        - name: IMAGE_FROM_1
+          value: from1
+        - name: IMAGE_TO_1
+          value: to1
+        - name: IMAGE_FROM_AAA
+          value: fromAAA
+        - name: IMAGE_TO_AAA
+          value: toAAA
         volumeMounts:
           - name: script
             mountPath: /app
